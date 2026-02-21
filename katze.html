@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mietze</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: #fff;
+    color: #000;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 18px;
+    padding: 14px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 40px;
+    text-align: center;
+    letter-spacing: 8px;
+    border-top: 5px solid #000;
+    border-bottom: 5px solid #000;
+    padding: 8px 0;
+    margin-bottom: 14px;
+  }
+
+  #cat {
+    font-size: 14px;
+    line-height: 1.25;
+    white-space: pre;
+    text-align: left;
+    border: 3px solid #000;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    min-height: 180px;
+  }
+
+  #stats {
+    border: 3px solid #000;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 17px;
+    line-height: 2.0;
+  }
+
+  #msg {
+    border: 3px solid #000;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 17px;
+    min-height: 56px;
+    line-height: 1.5;
+  }
+
+  #buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  button {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border: 4px solid #000;
+    background: #fff;
+    color: #000;
+    padding: 16px 6px;
+    cursor: pointer;
+  }
+
+  button:active {
+    background: #000;
+    color: #fff;
+  }
+
+  #footer {
+    text-align: right;
+    font-size: 15px;
+    border-top: 2px solid #000;
+    padding-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>M I E T Z E</h1>
+
+<div id="cat"></div>
+<div id="stats"></div>
+<div id="msg"></div>
+
+<div id="buttons">
+  <button onclick="doFeed()">FUTTERN</button>
+  <button onclick="doPlay()">SPIELEN</button>
+  <button onclick="doWash()">WASCHEN</button>
+  <button id="btnSleep" onclick="doSleep()">SCHLAFEN</button>
+  <button onclick="doPet()">STREICHELN</button>
+</div>
+
+<div id="footer">Alter: <span id="age">0</span> Tage &nbsp;|&nbsp; Punkte: <span id="pts">0</span></div>
+
+<script>
+// ── Zustand ───────────────────────────────────────────────
+var hunger   = 80;
+var happy    = 70;
+var sauber   = 90;
+var energy   = 80;
+var age      = 0;
+var pts      = 0;
+var sleeping = false;
+var ticks    = 0;
+var alive    = true;
+
+// ── Sprites ───────────────────────────────────────────────
+
+var CAT_NORMAL =
+"      ,_     _,\n" +
+"      |\\\\___//|\n" +
+"      |=6   6=|\n" +
+"      \\=._Y_.=/\n" +
+"       )  `  (    ,\n" +
+"      /       \\  ((\n" +
+"      |       |   ))\n" +
+"     /| |   | |\\_//\n" +
+"     \\| |._.| |/-`\n" +
+"      '\"'   '\"'";
+
+var CAT_HAPPY =
+"      ,_     _,\n" +
+"      |\\\\___//|\n" +
+"      |=^   ^=|\n" +
+"      \\=._Y_.=/\n" +
+"       ) ~~~ (  /\n" +
+"      /       \\/\n" +
+"      |  ^_^  |\n" +
+"     /| |   | |\\_//\n" +
+"     \\| |._.| |/-`\n" +
+"      '\"'   '\"'";
+
+var CAT_EAT =
+"      ,_     _,\n" +
+"      |\\\\___//|\n" +
+"      |=o   o=|\n" +
+"      \\=._Y_.=/\n" +
+"       ) nom  (\n" +
+"      /  [~~] \\\n" +
+"      | [FOOD] |\n" +
+"     /| |   | |\\_//\n" +
+"     \\| |._.| |/-`\n" +
+"      '\"'   '\"'";
+
+var CAT_SLEEP =
+"      ,_     _,          z\n" +
+"      |\\\\___//|        Z\n" +
+"      |=-   -=|      Z\n" +
+"      \\=.___.=/\n" +
+"       )     (\n" +
+"      /       \\\n" +
+"      |       |\n" +
+"     /| |   | |\\_//\n" +
+"     \\| |._.| |/-`\n" +
+"      '\"'   '\"'";
+
+var CAT_SAD =
+"      ,_     _,\n" +
+"      |\\\\___//|\n" +
+"      |=;   ;=|\n" +
+"      \\=. v .=/\n" +
+"       )  _  (\n" +
+"      /       \\\n" +
+"      | . . . |\n" +
+"     /| |   | |\\_//\n" +
+"     \\| |._.| |/-`\n" +
+"      '\"'   '\"'";
+
+// Dirty hat 3 Stufen je nach Verschmutzung
+function catDirty(s) {
+  if (s < 20) {
+    return (
+"      ,_     _,\n" +
+"      |\\\\___//|  ~~~\n" +
+"      |=o   o=|  ~~\n" +
+"      \\=._Y_.=/\n" +
+"       )  `  (\n" +
+"      /       \\  ,      ,      ,\n" +
+"      |       | (~)_  _(~)_  _(~)_\n" +
+"     /| |   | |\\_//  (~~~~) (~~~~)\n" +
+"     \\| |._.| |/-`\n" +
+"      '\"'   '\"'"
+    );
+  } else if (s < 40) {
+    return (
+"      ,_     _,\n" +
+"      |\\\\___//|  ~~\n" +
+"      |=o   o=|  ~\n" +
+"      \\=._Y_.=/\n" +
+"       )  `  (\n" +
+"      /       \\     ,      ,\n" +
+"      |       |   _(~)_  _(~)_\n" +
+"     /| |   | |\\_// (~) (~~~~)\n" +
+"     \\| |._.| |/-`\n" +
+"      '\"'   '\"'"
+    );
+  } else {
+    return (
+"      ,_     _,\n" +
+"      |\\\\___//|\n" +
+"      |=o   o=|   ~\n" +
+"      \\=._Y_.=/  ~\n" +
+"       )  `  (\n" +
+"      /       \\\n" +
+"      |       |        ,\n" +
+"     /| |   | |\\_//  _(~)_\n" +
+"     \\| |._.| |/-`  (~~~~)\n" +
+"      '\"'   '\"'"
+    );
+  }
+}
+
+// ── Hilfsfunktionen ───────────────────────────────────────
+
+function bar(val) {
+  var n = Math.round(val / 10);
+  var s = "[";
+  for (var i = 0; i < 10; i++) s += (i < n) ? "#" : ".";
+  return s + "] " + val + "%";
+}
+
+function currentSprite() {
+  if (!alive)       return CAT_SAD;
+  if (sleeping)     return CAT_SLEEP;
+  if (sauber < 60)  return catDirty(sauber);
+  if (happy  < 25)  return CAT_SAD;
+  return CAT_NORMAL;
+}
+
+function render() {
+  document.getElementById("cat").textContent = currentSprite();
+  document.getElementById("stats").innerHTML =
+    "Hunger:   " + bar(hunger) + "<br>" +
+    "Glueck:   " + bar(happy)  + "<br>" +
+    "Sauber:   " + bar(sauber) + "<br>" +
+    "Energie:  " + bar(energy);
+  document.getElementById("age").textContent = age;
+  document.getElementById("pts").textContent = pts;
+}
+
+function showMsg(text) {
+  document.getElementById("msg").textContent = text;
+}
+
+function showThen(sprite, ms) {
+  document.getElementById("cat").textContent = sprite;
+  setTimeout(function() { render(); }, ms);
+}
+
+// ── Aktionen ──────────────────────────────────────────────
+
+function doFeed() {
+  if (!alive)       { showMsg("Mietze ist weg... Lade die Seite neu."); return; }
+  if (sleeping)     { showMsg("Psst! Mietze schlaeft gerade!"); return; }
+  if (hunger >= 95) { showMsg("Mietze dreht sich weg - sie ist schon so satt!"); return; }
+  hunger = Math.min(100, hunger + 25);
+  happy  = Math.min(100, happy  + 5);
+  pts   += 10;
+  showThen(CAT_EAT, 2500);
+  showMsg("Mietze frisst ihr Futter und schnurrt dabei laut!");
+}
+
+function doPlay() {
+  if (!alive)      return;
+  if (sleeping)    { showMsg("Psst! Mietze schlaeft!"); return; }
+  if (energy < 15) { showMsg("Mietze ist zu muede. Lass sie erst schlafen!"); return; }
+  happy  = Math.min(100, happy  + 30);
+  energy = Math.max(0,   energy - 20);
+  hunger = Math.max(0,   hunger - 10);
+  pts   += 20;
+  showThen(CAT_HAPPY, 2500);
+  showMsg("Mietze jagt den Wollfaden und macht einen Buckel vor Aufregung!");
+}
+
+function doWash() {
+  if (!alive)   return;
+  if (sleeping) { showMsg("Nicht jetzt, sie schlaeft..."); return; }
+  sauber = Math.min(100, sauber + 45);
+  happy  = Math.min(100, happy  + 10);
+  pts   += 15;
+  showThen(CAT_HAPPY, 2500);
+  showMsg("Mietze wird gebuerstet und schnurrt zufrieden!");
+}
+
+function doSleep() {
+  if (!alive) return;
+  if (sleeping) {
+    sleeping = false;
+    document.getElementById("btnSleep").textContent = "SCHLAFEN";
+    showMsg("Mietze streckt sich lang aus und gaehnt laut. Munter!");
+  } else {
+    sleeping = true;
+    document.getElementById("btnSleep").textContent = "WECKEN";
+    showMsg("Mietze dreht sich drei Mal im Kreis und rollt sich zusammen. Gute Nacht!");
+  }
+  render();
+}
+
+function doPet() {
+  if (!alive)   return;
+  if (sleeping) { showMsg("Mietze zuckt kurz im Schlaf... wie suess."); return; }
+  happy = Math.min(100, happy + 15);
+  pts  += 5;
+  showThen(CAT_HAPPY, 2000);
+  var msgs = [
+    "Mietze reibt ihren Kopf an deiner Hand. Mehr! Mehr!",
+    "Mietze rollt sich auf den Ruecken und zeigt ihren Bauch.",
+    "Mietze schnurrt so laut, dass sie vibriert!",
+    "Mietze bringt dir eine tote Maus als Geschenk. Wie nett."
+  ];
+  showMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+}
+
+// ── Spiel-Ticker (alle 30 Sek.) ───────────────────────────
+
+function gameTick() {
+  if (!alive) return;
+  ticks++;
+
+  if (sleeping) {
+    energy = Math.min(100, energy + 15);
+    if (energy >= 100) {
+      sleeping = false;
+      document.getElementById("btnSleep").textContent = "SCHLAFEN";
+      showMsg("Mietze ist ausgeschlafen und springt auf!");
+    }
+  } else {
+    hunger = Math.max(0, hunger - 4);
+    happy  = Math.max(0, happy  - 3);
+    sauber = Math.max(0, sauber - 2);
+    energy = Math.max(0, energy - 2);
+    if (ticks % 5  === 0) sauber = Math.max(0, sauber - 8);
+    if (ticks % 20 === 0) { age++; pts += 5; }
+
+    if (hunger <= 0 && happy <= 0) {
+      alive = false;
+      showMsg("Oh nein... Mietze laeuft weg. Lade die Seite neu!");
+      render();
+      return;
+    }
+
+    if      (hunger < 20) showMsg("Mietze miaut laut und schubst ihren leeren Napf um!");
+    else if (sauber < 20) showMsg("Mietze riecht streng... Sie braucht dringend eine Buerste!");
+    else if (sauber < 40) showMsg("Mietze sieht etwas ungepflegt aus. Zeit zum Buersten!");
+    else if (happy  < 25) showMsg("Mietze sitzt mit dem Ruecken zu dir. Sie ist sauer.");
+    else if (energy < 15) showMsg("Mietze gaehnt breit. Sie ist sehr muede!");
+    else if (happy  > 85) showMsg("Mietze schnurrt laut und reibt sich an deinen Beinen!");
+    else                  showMsg("Mietze beobachtet dich mit halbgeschlossenen Augen...");
+  }
+
+  render();
+}
+
+// ── Start ─────────────────────────────────────────────────
+render();
+showMsg("Willkommen! Das ist Mietze, deine Katze. Sie ignoriert dich erstmal demonstrativ.");
+setInterval(gameTick, 30000);
+</script>
+</body>
+</html>
