@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bello</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: #fff;
+    color: #000;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 18px;
+    padding: 14px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 40px;
+    text-align: center;
+    letter-spacing: 8px;
+    border-top: 5px solid #000;
+    border-bottom: 5px solid #000;
+    padding: 8px 0;
+    margin-bottom: 14px;
+  }
+
+  #dog {
+    font-size: 14px;
+    line-height: 1.25;
+    white-space: pre;
+    text-align: left;
+    border: 3px solid #000;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+
+  #stats {
+    border: 3px solid #000;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 17px;
+    line-height: 2.0;
+  }
+
+  #msg {
+    border: 3px solid #000;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 17px;
+    min-height: 56px;
+    line-height: 1.5;
+  }
+
+  #buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  button {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border: 4px solid #000;
+    background: #fff;
+    color: #000;
+    padding: 16px 6px;
+    cursor: pointer;
+  }
+
+  button:active {
+    background: #000;
+    color: #fff;
+  }
+
+  #footer {
+    text-align: right;
+    font-size: 15px;
+    border-top: 2px solid #000;
+    padding-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>B E L L O</h1>
+
+<div id="dog"></div>
+<div id="stats"></div>
+<div id="msg"></div>
+
+<div id="buttons">
+  <button onclick="doFeed()">FUTTERN</button>
+  <button onclick="doPlay()">SPIELEN</button>
+  <button onclick="doWash()">WASCHEN</button>
+  <button id="btnSleep" onclick="doSleep()">SCHLAFEN</button>
+  <button onclick="doPet()">STREICHELN</button>
+</div>
+
+<div id="footer">Alter: <span id="age">0</span> Tage &nbsp;|&nbsp; Punkte: <span id="pts">0</span></div>
+
+<script>
+// ── Zustand ───────────────────────────────────────────────
+var hunger   = 80;
+var happy    = 70;
+var sauber   = 90;
+var energy   = 80;
+var age      = 0;
+var pts      = 0;
+var sleeping = false;
+var ticks    = 0;
+var alive    = true;
+
+// ── ASCII Sprites ─────────────────────────────────────────
+
+var DOG_NORMAL =
+"        __\n" +
+"       /  \\__\n" +
+"  .---/ o  o \\\n" +
+" /    \\  vv  /\n" +
+"|  /\\  `----'\n" +
+"|_/ /   |  |\n" +
+"   /|   |  |\n" +
+"  / |  /|  |\\\n" +
+" /__|_/ |__|_\\\n" +
+"    |       |\n" +
+"  ##|##   ##|##\n" +
+"  #####   #####";
+
+var DOG_HAPPY =
+"        __        _\n" +
+"       /  \\__    < >\n" +
+"  .---/ ^  ^ \\   _|_\n" +
+" /    \\  WW  /\n" +
+"|  /\\  `----'  ~~\n" +
+"|_/ /   |  |  ~~\n" +
+"   /|   |  |\n" +
+"  / |  /|  |\\\n" +
+" /__|_/ |__|_\\\n" +
+"    |   *   |\n" +
+"  ##|##   ##|##\n" +
+"  #####   #####";
+
+var DOG_EAT =
+"        __\n" +
+"       /  \\__\n" +
+"  .---/ o  o \\\n" +
+" /    \\  ww  /\n" +
+"|  /\\  `----'\n" +
+"|_/ /   |  |   _____\n" +
+"   /|   |  |  |FOOD |\n" +
+"  / |  /|  |\\ |_____|\n" +
+" /__|_/ |__|_\\\n" +
+"    |       |\n" +
+"  ##|##   ##|##\n" +
+"  #####   #####";
+
+var DOG_SLEEP =
+"        __\n" +
+"       /  \\__      z\n" +
+"  .---/ -  - \\    z\n" +
+" /    \\  __  /   z\n" +
+"|      `----'\n" +
+" \\________________/\n" +
+"  |              |\n" +
+"  |  ~ ~ ~ ~ ~  |\n" +
+"  |______________|\n" +
+"    |          |\n" +
+"  ##|##      ##|##\n" +
+"  #####      #####";
+
+var DOG_SAD =
+"        __\n" +
+"       /  \\__\n" +
+"  .---/ T  T \\\n" +
+" /    \\  nn  /\n" +
+"|  /\\  `----'\n" +
+"|_/ /   |  |\n" +
+"   /|   |  |  ...\n" +
+"  / |  /|  |\\\n" +
+" /__|_/ |__|_\\\n" +
+"    |       |\n" +
+"  ##|##   ##|##\n" +
+"  #####   #####";
+
+var DOG_DIRTY =
+"        __\n" +
+"       /  \\__\n" +
+"  .---/ o  o \\ ~stink~\n" +
+" /    \\  vv  /\n" +
+"|  /\\  `----'  ~\n" +
+"|_/ /   |  |  ~\n" +
+"   /|x  |  |x       *\n" +
+"  / |  /|  |\\ (*)  (*)\n" +
+" /__|_/ |__|_\\\n" +
+"    |       |\n" +
+"  ##|##   ##|##\n" +
+"  #####   #####";
+
+// ── Hilfsfunktionen ───────────────────────────────────────
+
+function bar(val) {
+  var n = Math.round(val / 10);
+  var s = "[";
+  for (var i = 0; i < 10; i++) s += (i < n) ? "#" : ".";
+  return s + "] " + val + "%";
+}
+
+function currentSprite() {
+  if (!alive)       return DOG_SAD;
+  if (sleeping)     return DOG_SLEEP;
+  if (sauber < 25)  return DOG_DIRTY;
+  if (happy  < 25)  return DOG_SAD;
+  return DOG_NORMAL;
+}
+
+function render() {
+  document.getElementById("dog").textContent = currentSprite();
+  document.getElementById("stats").innerHTML =
+    "Hunger:   " + bar(hunger) + "<br>" +
+    "Glueck:   " + bar(happy)  + "<br>" +
+    "Sauber:   " + bar(sauber) + "<br>" +
+    "Energie:  " + bar(energy);
+  document.getElementById("age").textContent = age;
+  document.getElementById("pts").textContent = pts;
+}
+
+function showMsg(text) {
+  document.getElementById("msg").textContent = text;
+}
+
+function showThen(sprite, ms) {
+  document.getElementById("dog").textContent = sprite;
+  setTimeout(function() { render(); }, ms);
+}
+
+// ── Aktionen ──────────────────────────────────────────────
+
+function doFeed() {
+  if (!alive)       { showMsg("Bello ist weg... Lade die Seite neu."); return; }
+  if (sleeping)     { showMsg("Psst! Bello schlaeft gerade!"); return; }
+  if (hunger >= 95) { showMsg("Bello dreht sich weg - er ist schon so satt!"); return; }
+  hunger = Math.min(100, hunger + 25);
+  happy  = Math.min(100, happy  + 5);
+  pts   += 10;
+  showThen(DOG_EAT, 2500);
+  showMsg("Bello frisst begeistert sein Futter! Nom nom nom...");
+}
+
+function doPlay() {
+  if (!alive)      return;
+  if (sleeping)    { showMsg("Psst! Bello schlaeft!"); return; }
+  if (energy < 15) { showMsg("Bello ist zu muede. Lass ihn erst schlafen!"); return; }
+  happy  = Math.min(100, happy  + 30);
+  energy = Math.max(0,   energy - 20);
+  hunger = Math.max(0,   hunger - 10);
+  pts   += 20;
+  showThen(DOG_HAPPY, 2500);
+  showMsg("Bello apportiert den Ball und wedelt wild mit dem Schwanz!");
+}
+
+function doWash() {
+  if (!alive)   return;
+  if (sleeping) { showMsg("Nicht jetzt, er schlaeft..."); return; }
+  sauber = Math.min(100, sauber + 45);
+  happy  = Math.min(100, happy  + 10);
+  pts   += 15;
+  showThen(DOG_HAPPY, 2500);
+  showMsg("Bello wird gebadet und schuettelt sich! Jetzt riecht er wieder gut.");
+}
+
+function doSleep() {
+  if (!alive) return;
+  if (sleeping) {
+    sleeping = false;
+    document.getElementById("btnSleep").textContent = "SCHLAFEN";
+    showMsg("Bello gaehnt riesig und streckt alle Pfoten aus. Munter!");
+  } else {
+    sleeping = true;
+    document.getElementById("btnSleep").textContent = "WECKEN";
+    showMsg("Bello dreht sich drei Mal im Kreis und legt sich hin. Gute Nacht!");
+  }
+  render();
+}
+
+function doPet() {
+  if (!alive)   return;
+  if (sleeping) { showMsg("Bello schnaeft suess... wie ein kleiner Traumhund."); return; }
+  happy = Math.min(100, happy + 15);
+  pts  += 5;
+  showThen(DOG_HAPPY, 2000);
+  var msgs = [
+    "Bello stupst deine Hand mit der Nase an. Mehr! Mehr!",
+    "Bello rollt sich auf den Ruecken und zeigt seinen Bauch.",
+    "Bello leckt deine Hand. Iih! Aber soooo suess!",
+    "Bello bringt dir seinen Lieblingsball als Geschenk."
+  ];
+  showMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+}
+
+// ── Spiel-Ticker (alle 30 Sek.) ───────────────────────────
+
+function gameTick() {
+  if (!alive) return;
+  ticks++;
+
+  if (sleeping) {
+    energy = Math.min(100, energy + 15);
+    if (energy >= 100) {
+      sleeping = false;
+      document.getElementById("btnSleep").textContent = "SCHLAFEN";
+      showMsg("Bello ist ausgeschlafen und springt auf!");
+    }
+  } else {
+    hunger = Math.max(0, hunger - 4);
+    happy  = Math.max(0, happy  - 3);
+    sauber = Math.max(0, sauber - 2);
+    energy = Math.max(0, energy - 2);
+    if (ticks % 5  === 0) sauber = Math.max(0, sauber - 8);
+    if (ticks % 20 === 0) { age++; pts += 5; }
+
+    if (hunger <= 0 && happy <= 0) {
+      alive = false;
+      showMsg("Oh nein... Bello laeuft weg. Lade die Seite neu!");
+      render();
+      return;
+    }
+
+    if      (hunger < 20) showMsg("Bello schaut dich mit grossen Augen an. Er hat Hunger!");
+    else if (sauber < 25) showMsg("Bello riecht komisch... Er braucht dringend ein Bad!");
+    else if (happy  < 25) showMsg("Bellos Schwanz haengt herunter. Er ist traurig.");
+    else if (energy < 15) showMsg("Bello gaehnt laut. Er ist sehr muede!");
+    else if (happy  > 85) showMsg("Bello wedelt so schnell mit dem Schwanz, dass er fast umfaellt!");
+    else                  showMsg("Bello schaut dich erwartungsvoll an...");
+  }
+
+  render();
+}
+
+// ── Start ─────────────────────────────────────────────────
+render();
+showMsg("Willkommen! Das ist Bello, dein Golden Retriever. Er freut sich riesig auf dich!");
+setInterval(gameTick, 30000);
+</script>
+</body>
+</html>
